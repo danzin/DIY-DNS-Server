@@ -1,0 +1,14 @@
+{
+    "name": "DIY DNS Server",
+    "description": "DNS Server from scratch",
+    "type": "module",
+    "scripts": {
+        "dev": "bun run app/main.ts"
+    },
+    "dependencies": {
+        "async": "^3.2.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.12.11"
+    }
+}
