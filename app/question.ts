@@ -18,6 +18,14 @@ export default class DNSQuestion {
 
   }
 
+  /**
+   * Encodes the DNS question into a Uint8Array.
+   *
+   * This function takes the name, type, and class of the DNS question,
+   * encodes each part separately, and then combines them into a single Uint8Array.
+   *
+   * @return {Uint8Array} The encoded DNS question.
+   */
   encode(): Uint8Array {
     const parts = this.name.split(".");
 

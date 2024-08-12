@@ -28,6 +28,14 @@ export default class DNSAnswer {
   
   };
 
+  /**
+   * Encodes the DNS answer into a Uint8Array.
+   *
+   * This function takes the name, type, class, ttl, and data of the DNS answer,
+   * encodes each part separately, and then combines them into a single Uint8Array.
+   *
+   * @return {Uint8Array} The encoded DNS answer.
+   */
   encode(): Uint8Array {
 
     //Encode name, init new buffer with length of name bytes + 10 (for type, class, ttl, and data length) + data length
