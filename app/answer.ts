@@ -1,74 +1,37 @@
-import { encodeLabel } from "./utils";
+import { encodeDomainName } from "./utils";
+import { DNSQuestion } from "./question";
 
-interface AnswerOpts {
-  name?: string;
-  type?: number;
-  class?: number;
-  ttl?: number;
-  dataLength?: number;
-  data?: Buffer;
-
-};
-
-export default class DNSAnswer {
+export class DNSAnswer {
   name: string;
-  type: number; // 16 bits (2 bytes)
-  class: number; // 16 bits (2 bytes)
-  ttl: number; // 32 bits (4 bytes)
-  dataLength: number; // 16 bits (2 bytes)
-  data: Buffer; // address or other data
+  type: number;
+  class: number;
+  ttl: number;
+  rdLength: number;
+  rdata: Buffer;
 
-  constructor(options: AnswerOpts = {}){
-    this.name = options.name ?? "";
-    this.type = options.type ?? 1;
-    this.ttl = options.type ?? 0;
-    this.class = options.class ?? 1;
-    this.dataLength = options.dataLength ?? 4;
-    this.data = options.data ?? Buffer.alloc(this.dataLength)
-  
-  };
+  constructor() {
+    this.name = '';
+    this.type = 1; // A record
+    this.class = 1; // IN
+    this.ttl = 60; // TTL of 60 seconds
+    this.rdLength = 4; // IPv4 address is 4 bytes
+    this.rdata = Buffer.from([8, 8, 8, 8]); // Default to 8.8.8.8
+  }
 
-  /**
-   * Encodes the DNS answer into a Uint8Array.
-   *
-   * This function takes the name, type, class, ttl, and data of the DNS answer,
-   * encodes each part separately, and then combines them into a single Uint8Array.
-   *
-   * @return {Uint8Array} The encoded DNS answer.
-   */
-  encode(): Uint8Array {
+  fromQuestion(question: DNSQuestion) {
+    this.name = question.name;
+    this.type = question.type;
+    this.class = question.class;
+  }
 
-    //Encode name, init new buffer with length of name bytes + 10 (for type, class, ttl, and data length) + data length
-    const nameBytes = encodeLabel(this.name);
-    const buffer = new ArrayBuffer(nameBytes.length + 10 + this.data.length);
-
-    //Easier to work with DataView
-    const view = new DataView(buffer);
-
-    //Set type, class, ttl, and data length and data to the buffer
-    let offset = 0;
-
-    for (const byte of nameBytes) {
-      view.setUint8(offset++, byte);
-    };
-    view.setUint16(offset, this.type, false);
-    offset += 2;
-
-    view.setUint16(offset, this.class, false);
-    offset += 2;
-    
-    view.setUint32(offset, this.ttl, false);
-    offset += 4;
-    
-    view.setUint16(offset, this.dataLength, false);
-    offset += 2;
-    
-    for (const byte of this.data) {
-      view.setUint8(offset++, byte);
-    };
-
-    //Return new Uint8Array from the buffer
-    return new Uint8Array(buffer);
-  };
-};
-
+  toBuffer(): Buffer {
+    const nameBuffer = encodeDomainName(this.name);
+    const buffer = Buffer.alloc(nameBuffer.length + 10 + this.rdata.length);
+    nameBuffer.copy(buffer, 0);
+    buffer.writeUInt16BE(this.type, nameBuffer.length);
+    buffer.writeUInt32BE(this.ttl, nameBuffer.length + 4);
+    buffer.writeUInt16BE(this.rdLength, nameBuffer.length + 8);
+    this.rdata.copy(buffer, nameBuffer.length + 10);
+    return buffer;
+  }
+}

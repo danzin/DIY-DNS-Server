@@ -1,51 +1,43 @@
-import DNSAnswer from "./answer";
-import DNSHeader from "./header";
-import DNSQuestion from "./question";
+import { DNSHeader } from "./header";
+import { DNSQuestion } from "./question";
+import { DNSAnswer } from "./answer";
 
-export default class DNSMessage {
-  header: DNSHeader;
-  question: DNSQuestion;
-  answer: DNSAnswer;
+export class DNSMessage {
+  header!: DNSHeader;
+  questions: DNSQuestion[] = [];
+  answers: DNSAnswer[] = [];
 
-  constructor(header: DNSHeader, question: DNSQuestion, answer: DNSAnswer) {
-    this.header = header;
-    this.question = question;
-    this.answer = answer;
-  }
-  /**
-   * Encodes the DNS message into a Uint8Array.
-   *
-   * This function takes the header, question, and answer parts of the DNS message,
-   * encodes each part separately, and then combines them into a single Uint8Array.
-   *
-   * @return {Uint8Array} The encoded DNS message.
-   */
-  encode(): Uint8Array {
-    const headerBytes = this.header.encode();
-    const questionBytes = this.question.encode();
-    const answerBytes = this.answer.encode();
-
-    const messageBytes = new Uint8Array(
-      headerBytes.length + questionBytes.length + answerBytes.length
-    );
-
-    messageBytes.set(headerBytes);
-    messageBytes.set(questionBytes, headerBytes.length);
-    messageBytes.set(answerBytes, headerBytes.length + questionBytes.length);
-    return messageBytes;
-  }
-  
-  /**
-   * Creates a DNSMessage object from a given Buffer.
-   *
-   * This function reads the Buffer and extracts the necessary information to
-   * populate the DNSMessage object's properties.
-   *
-   * @param {Buffer} buffer - The Buffer to read from.
-   * @return {DNSMessage} The populated DNSMessage object.
-   */
   fromBuffer(buffer: Buffer): DNSMessage {
+    this.header = new DNSHeader();
     this.header.fromBuffer(buffer);
+
+    let offset = 12; // Start after the header
+    for (let i = 0; i < this.header.qdCount; i++) {
+      const question = new DNSQuestion();
+      offset = question.fromBuffer(buffer, offset);
+      this.questions.push(question);
+    }
+
     return this;
+  }
+
+  toBuffer(): Buffer {
+    const headerBuffer = this.header.toBuffer();
+    let questionBuffers = Buffer.concat(this.questions.map(q => q.toBuffer()));
+    let answerBuffers = Buffer.concat(this.answers.map(a => a.toBuffer()));
+
+    return Buffer.concat([headerBuffer, questionBuffers, answerBuffers]);
+  }
+
+  createResponse(): void {
+    this.header.qr = true;
+    this.header.anCount = this.questions.length;
+
+    // Create an answer for each question
+    this.questions.forEach(question => {
+      const answer = new DNSAnswer();
+      answer.fromQuestion(question);
+      this.answers.push(answer);
+    });
   }
 }

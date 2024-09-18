@@ -1,58 +1,36 @@
-import { set16BitValueQuestion } from "./helpers";
+import { encodeDomainName, readDomainName } from "./utils";
 
-interface QuestionOptions {
-  name?: string;
-  type?: number;
-  class?: number;
-}
-
-export default class DNSQuestion {
+export class DNSQuestion {
   name: string;
   type: number;
   class: number;
 
-  constructor(options: QuestionOptions = {}) {
-    this.name = options.name ?? "";
-    this.type = options.type ?? 1;
-    this.class = options.class ?? 1;
-
+  constructor() {
+    this.name = '';
+    this.type = 1; // A record
+    this.class = 1; // IN
   }
 
-  /**
-   * Encodes the DNS question into a Uint8Array.
-   *
-   * This function takes the name, type, and class of the DNS question,
-   * encodes each part separately, and then combines them into a single Uint8Array.
-   *
-   * @return {Uint8Array} The encoded DNS question.
-   */
-  encode(): Uint8Array {
-    const parts = this.name.split(".");
+  fromBuffer(buffer: Buffer, offset: number): number {
+    [this.name, offset] = readDomainName(buffer, offset);
 
-    // Calculating the byte length of the buffer from the parts of the name
-    let nameBytesCnt = 0;
-    for (const part of parts) {
-      nameBytesCnt += part.length + 1;
+    if (offset + 4 > buffer.length) {
+      throw new Error("Buffer overrun while reading question type and class");
     }
-    nameBytesCnt++; // for the last 0x00
-
-    // Initializing the buffer with extra 4 bytes for type and class fields
-    const buffer = new ArrayBuffer(nameBytesCnt + 4);
-    // Data view for easier reading and writing of the buffer
-    const view = new DataView(buffer);
-
-
-    let offset = 0;
-    for (const part of parts) {
-      view.setUint8(offset++, part.length);
-      for (let i = 0; i < part.length; i++) {
-        view.setUint8(offset++, part.charCodeAt(i));
-      }
-    }
-    view.setUint8(offset++, 0);
-    set16BitValueQuestion(view, this.type, offset);
+    this.type = buffer.readUInt16BE(offset);
     offset += 2;
-    set16BitValueQuestion(view, this.class, offset);
-    return new Uint8Array(buffer);
+    this.class = buffer.readUInt16BE(offset);
+    offset += 2;
+
+    return offset;
+  }
+
+  toBuffer(): Buffer {
+    const nameBuffer = encodeDomainName(this.name);
+    const buffer = Buffer.alloc(nameBuffer.length + 4);
+    nameBuffer.copy(buffer, 0);
+    buffer.writeUInt16BE(this.type, nameBuffer.length);
+    buffer.writeUInt16BE(this.class, nameBuffer.length + 2);
+    return buffer;
   }
 }
