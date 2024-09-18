@@ -1,3 +1,4 @@
+import { BufferOverunError } from "./errors";
 import { encodeDomainName, readDomainName } from "./utils";
 
 export class DNSQuestion {
@@ -15,7 +16,7 @@ export class DNSQuestion {
     [this.name, offset] = readDomainName(buffer, offset);
 
     if (offset + 4 > buffer.length) {
-      throw new Error("Buffer overrun while reading question type and class");
+      throw new BufferOverunError("Buffer overrun while reading question type and class");
     }
     this.type = buffer.readUInt16BE(offset);
     offset += 2;
