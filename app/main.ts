@@ -5,7 +5,7 @@ const address = "127.0.0.1";
 const port = 2053
 const udpSocket: dgram.Socket = dgram.createSocket("udp4");
 
-udpSocket.bind(port, "127.0.0.1");
+udpSocket.bind(port, address);
 console.log(`Socket listening on ${address}:${port}...`);
 
 udpSocket.on("message", (data: Buffer, remoteAddr: dgram.RemoteInfo) => {
